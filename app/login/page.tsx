@@ -74,8 +74,7 @@ export default function LoginPage() {
               <input
                 type="text"
                 name="phone"
-                defaultValue="01736738334" // অ্যাডমিনের ডিফল্ট ফোন
-                placeholder="017XXXXXXXX"
+                placeholder="01XXXXXXXXX"
                 required
                 className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
               />
@@ -91,7 +90,6 @@ export default function LoginPage() {
               <input
                 type="password"
                 name="password"
-                defaultValue="admin" // অ্যাডমিনের ডিফল্ট পাসওয়ার্ড
                 placeholder="••••••"
                 required
                 className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
