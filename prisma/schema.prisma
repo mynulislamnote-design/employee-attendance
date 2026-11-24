@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+}
+
+enum ShiftType {
+  FULL_DAY
+  PART_TIME_MORNING
+  PART_TIME_EVENING
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ON_BREAK
+  COMPLETED
+}
+
+enum LeaveType {
+  CASUAL
+  SICK
+  ANNUAL
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id             String         @id @default(uuid())
+  name           String
+  phone          String         @unique
+  password       String
+  role           Role           @default(EMPLOYEE)
+  employmentType EmploymentType @default(FULL_TIME)
+  currentShift   ShiftType      @default(FULL_DAY)
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  attendances    Attendance[]
+  leaves         Leave[]
+
+  @@map("users")
+}
+
+model Attendance {
+  id                  String           @id @default(uuid())
+  userId              String
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  date                String
+  shiftAttended       ShiftType
+  
+  checkIn             DateTime
+  checkOut            DateTime?
+  
+  breakStart          DateTime?
+  breakEnd            DateTime?
+  totalBreakMinutes   Int              @default(0)
+  allowedBreakMinutes Int              @default(60)
+  overBreakMinutes    Int              @default(0)
+  
+  status              AttendanceStatus @default(PRESENT)
+  workNote            String?          @db.Text
+  
+  isLate              Boolean          @default(false)
+  lateMinutes         Int              @default(0)
+  
+  checkInLat          Float?
+  checkInLng          Float?
+  
+  isForcedBreak       Boolean          @default(false)
+  forcedBy            String?
+
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@unique([userId, date])
+  @@map("attendances")
+}
+
+model Leave {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  leaveType   LeaveType   @default(CASUAL)
+  startDate   String
+  endDate     String
+  totalDays   Int         @default(1)
+  reason      String      @db.Text
+  status      LeaveStatus @default(PENDING)
+  adminNote   String?
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("leaves")
+}
+
+model Settings {
+  id                  Int      @id @default(1)
+  
+  officeLat           Float    @default(23.8103)
+  officeLng           Float    @default(90.4125)
+  allowedRadius       Int      @default(100)
+  
+  fullTimeBreakLimit  Int      @default(60)
+  partTimeBreakLimit  Int      @default(30)
+  
+  fullDayStart        String   @default("09:00")
+  fullDayEnd          String   @default("20:00")
+  
+  morningStart        String   @default("09:00")
+  morningEnd          String   @default("14:30")
+  
+  eveningStart        String   @default("14:30")
+  eveningEnd          String   @default("20:00")
+  
+  gracePeriodMinutes  Int      @default(15)
+  managerPhone        String   @default("")
+  chairmanPhone       String   @default("")
+  
+  updatedAt           DateTime @updatedAt
+
+  @@map("settings")
+}
