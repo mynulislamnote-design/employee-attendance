@@ -5,7 +5,6 @@ import { checkLocationBoundary } from "@/lib/geo";
 import { notifyAttendance } from "@/lib/whatsapp";
 import { AttendanceStatus, ShiftType } from "@prisma/client";
 
-// ইংরেজি সংখ্যাকে বাংলা সংখ্যায় রূপান্তর করার হেল্পার
 function toBanglaNumber(num: number | string): string {
   const banglaDigits = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
   return num
@@ -17,28 +16,28 @@ function toBanglaNumber(num: number | string): string {
     .join("");
 }
 
-// মিনিটকে ঘণ্টা ও মিনিটে রূপান্তর করার হেল্পার
 function formatLateDuration(minutes: number): string {
-  if (minutes < 60) {
-    return `${toBanglaNumber(minutes)} মিনিট`;
-  }
+  if (minutes < 60) return `${toBanglaNumber(minutes)} মিনিট`;
   const hours = Math.floor(minutes / 60);
   const remMinutes = minutes % 60;
-  if (remMinutes === 0) {
-    return `${toBanglaNumber(hours)} ঘণ্টা`;
-  }
+  if (remMinutes === 0) return `${toBanglaNumber(hours)} ঘণ্টা`;
   return `${toBanglaNumber(hours)} ঘণ্টা ${toBanglaNumber(remMinutes)} মিনিট`;
 }
 
-// আজকের তারিখ হেল্পার (YYYY-MM-DD)
 function getTodayDateString(): string {
   const now = new Date();
-  return now.toISOString().split("T")[0];
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dhaka",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(now);
 }
 
-// বর্তমান সময় ফরম্যাট করার হেল্পার
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("en-US", {
+    timeZone: "Asia/Dhaka",
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
@@ -62,9 +61,7 @@ export async function checkInAction({
 
     const [user, settings] = await Promise.all([
       prisma.user.findFirst({
-        where: {
-          OR: [{ id: userId }, { phone: userId }],
-        },
+        where: { OR: [{ id: userId }, { phone: userId }] },
       }),
       prisma.settings.findFirst({ where: { id: 1 } }),
     ]);
@@ -80,7 +77,6 @@ export async function checkInAction({
       return { success: false, message: "অফিস সেটিংস খুঁজে পাওয়া যায়নি।" };
     }
 
-    // ১. জিও-ফেন্সিং যাচাই
     const { isAllowed, distance } = checkLocationBoundary(
       userLat,
       userLng,
@@ -96,7 +92,6 @@ export async function checkInAction({
       };
     }
 
-    // ২. আজকের দিনে ইতিমধ্যে চেক-ইন আছে কি না
     const existing = await prisma.attendance.findUnique({
       where: {
         userId_date: {
@@ -115,7 +110,7 @@ export async function checkInAction({
 
     const now = new Date();
 
-    // ৩. লেট নির্ধারণ লজিক (শিফট অনুযায়ী)
+    // শিফট অনুযায়ী সময় নির্ধারণ
     let shiftStartTimeStr = settings.fullDayStart;
     if (user.currentShift === ShiftType.PART_TIME_MORNING) {
       shiftStartTimeStr = settings.morningStart;
@@ -123,31 +118,41 @@ export async function checkInAction({
       shiftStartTimeStr = settings.eveningStart;
     }
 
-    const [startHour, startMinute] = shiftStartTimeStr.split(":").map(Number);
-    const shiftStartTime = new Date(now);
-    shiftStartTime.setHours(startHour, startMinute, 0, 0);
+    const bstTimeParts = now
+      .toLocaleTimeString("en-US", {
+        timeZone: "Asia/Dhaka",
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+      .split(":")
+      .map(Number);
 
-    const graceLimitTime = new Date(
-      shiftStartTime.getTime() + settings.gracePeriodMinutes * 60 * 1000,
-    );
+    const currentBstMinutes = bstTimeParts[0] * 60 + bstTimeParts[1];
+    const [startHour, startMinute] = shiftStartTimeStr.split(":").map(Number);
+    const scheduledStartMinutes = startHour * 60 + startMinute;
+
+    // গ্রেস লিমিট: ১০ মিনিট
+    const graceLimit = 10;
+    const graceMinutesAllowed = scheduledStartMinutes + graceLimit;
 
     let isLate = false;
     let lateMinutes = 0;
 
-    if (now > graceLimitTime) {
-      isLate = true;
-      lateMinutes = Math.round(
-        (now.getTime() - shiftStartTime.getTime()) / (1000 * 60),
-      );
+    // ৯:০০ টার পর যেকোনো সময় পৌঁছালেই বিলম্বের প্রকৃত মিনিট কাউন্ট হবে
+    if (currentBstMinutes > scheduledStartMinutes) {
+      lateMinutes = currentBstMinutes - scheduledStartMinutes;
+      // ১০ মিনিট পার হয়ে গেলে আনুষ্ঠানিকভাবে 'LATE' হিসেবে চিহ্নিত হবে
+      if (currentBstMinutes > graceMinutesAllowed) {
+        isLate = true;
+      }
     }
 
-    // ৪. ব্রেক লিমিট নির্ধারণ
     const allowedBreakMinutes =
       user.employmentType === "FULL_TIME"
         ? settings.fullTimeBreakLimit
         : settings.partTimeBreakLimit;
 
-    // ৫. ডাটাবেজে হাজিরা তৈরি
     const attendance = await prisma.attendance.create({
       data: {
         userId: user.id,
@@ -163,9 +168,12 @@ export async function checkInAction({
       },
     });
 
-    // ৬. সুন্দর ঘণ্টা-মিনিট ফরম্যাটে লেট মেসেজ
     const timeFormatted = formatTime(now);
-    const lateText = isLate ? ` (লেট: ${formatLateDuration(lateMinutes)})` : "";
+    const lateText = isLate
+      ? ` (লেট: ${formatLateDuration(lateMinutes)})`
+      : lateMinutes > 0
+        ? ` (যথাসময়ে - ${toBanglaNumber(lateMinutes)} মি. বিলম্বে)`
+        : "";
 
     const employeeMsg = `✅ হাজিরা সফল!\n👤 নাম: ${user.name}\n⏰ চেক-ইন: ${timeFormatted}${lateText}\n☕ অনুমোদিত বিরতি: ${allowedBreakMinutes} মিনিট\nশুভ কর্মদিবস!`;
     const managerMsg = `📋 হাজিরা নোটিশ:\n${user.name} চেক-ইন করেছেন।\n⏰ সময়: ${timeFormatted}${lateText}\n📍 দূরত্ব: ${distance} মিটার।`;
@@ -200,10 +208,13 @@ export async function toggleBreakAction({
   forcedBy?: string;
 }) {
   try {
-    const attendance = await prisma.attendance.findUnique({
-      where: { id: attendanceId },
-      include: { user: true },
-    });
+    const [attendance, settings] = await Promise.all([
+      prisma.attendance.findUnique({
+        where: { id: attendanceId },
+        include: { user: true },
+      }),
+      prisma.settings.findFirst({ where: { id: 1 } }),
+    ]);
 
     if (!attendance) {
       return { success: false, message: "হাজিরা রেকর্ড পাওয়া যায়নি।" };
@@ -214,8 +225,8 @@ export async function toggleBreakAction({
     }
 
     const now = new Date();
+    const timeFormatted = formatTime(now);
 
-    // ক. বিরতি শুরু করা
     if (attendance.status !== AttendanceStatus.ON_BREAK) {
       const updated = await prisma.attendance.update({
         where: { id: attendanceId },
@@ -227,17 +238,23 @@ export async function toggleBreakAction({
         },
       });
 
-      if (forcedBy) {
-        notifyAttendance({
-          employeePhone: attendance.user.phone,
-          employeeMsg: `⚠️ অ্যাডমিন আপনাকে ${formatTime(now)} মিনিটে বিরতিতে পাঠিয়েছেন।`,
-        });
-      }
+      const empMsg = forcedBy
+        ? `⚠️ অ্যাডমিন আপনাকে ${timeFormatted} মিনিটে বিরতিতে পাঠিয়েছেন। অনুমোদিত কোটা: ${attendance.allowedBreakMinutes} মিনিট।`
+        : `☕ বিরতি শুরু হয়েছে!\n⏰ সময়: ${timeFormatted}\nঅনুমোদিত বিরতি কোটা: ${attendance.allowedBreakMinutes} মিনিট। সময়মতো কাজে যোগ দিন।`;
+
+      const mgtMsg = `☕ বিরতি নোটিশ:\n👤 কর্মী: ${attendance.user.name}\n⏰ বিরতি শুরু: ${timeFormatted}\n${forcedBy ? `(অ্যাডমিন কর্তৃক ফোর্সড)` : ""}`;
+
+      notifyAttendance({
+        employeePhone: attendance.user.phone,
+        managerPhone: settings?.managerPhone,
+        chairmanPhone: settings?.chairmanPhone,
+        employeeMsg: empMsg,
+        managementMsg: mgtMsg,
+      });
 
       return { success: true, message: "বিরতি শুরু হয়েছে।", data: updated };
     }
 
-    // খ. বিরতি শেষ করা
     const breakStart = attendance.breakStart || now;
     const currentBreakMins = Math.max(
       1,
@@ -260,6 +277,19 @@ export async function toggleBreakAction({
         totalBreakMinutes: newTotalBreak,
         overBreakMinutes: overBreak,
       },
+    });
+
+    const overBreakText =
+      overBreak > 0 ? ` (⚠️ অতিরিক্ত বিরতি: ${overBreak} মিনিট)` : "";
+    const empEndMsg = `✅ বিরতি সমাপ্ত!\n⏰ কাজে যোগদানের সময়: ${timeFormatted}\n☕ এই সেশনের বিরতি: ${currentBreakMins} মিনিট\n📊 আজকের মোট বিরতি: ${newTotalBreak} / ${attendance.allowedBreakMinutes} মিনিট${overBreakText}\nশুভ কর্মপ্রবাহ!`;
+    const mgtEndMsg = `✅ বিরতি সমাপ্তি নোটিশ:\n👤 কর্মী: ${attendance.user.name}\n⏰ কাজে ফিরেছেন: ${timeFormatted}\n☕ আজকের মোট বিরতি: ${newTotalBreak} মিনিট${overBreakText}`;
+
+    notifyAttendance({
+      employeePhone: attendance.user.phone,
+      managerPhone: settings?.managerPhone,
+      chairmanPhone: settings?.chairmanPhone,
+      employeeMsg: empEndMsg,
+      managementMsg: mgtEndMsg,
     });
 
     return {
@@ -315,7 +345,6 @@ export async function checkOutAction({
       };
     }
 
-    // জিও-ফেন্সিং যাচাই
     const { isAllowed, distance } = checkLocationBoundary(
       userLat,
       userLng,

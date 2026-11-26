@@ -103,11 +103,9 @@ export default function AdminDashboard() {
     text: string;
   } | null>(null);
 
-  // এমপ্লয়ি মডাল
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [employmentType, setEmploymentType] = useState<string>("FULL_TIME");
 
-  // অ্যাডমিন রিপোর্ট ফিল্টার স্টেট
   const [selectedUserFilter, setSelectedUserFilter] = useState<string>("ALL");
   const [reportFilter, setReportFilter] = useState<
     "current_month" | "prev_month" | "custom"
@@ -117,7 +115,6 @@ export default function AdminDashboard() {
   const [adminReportData, setAdminReportData] = useState<any>(null);
   const [loadingAdminReport, setLoadingAdminReport] = useState<boolean>(false);
 
-  // ছুটির তালিকা স্টেট
   const [allLeaves, setAllLeaves] = useState<any[]>([]);
 
   const loadData = async () => {
@@ -135,7 +132,6 @@ export default function AdminDashboard() {
     loadData();
   }, []);
 
-  // অ্যাডমিন রিপোর্ট লোড
   const loadAdminReports = async () => {
     setLoadingAdminReport(true);
     const res = await getUnifiedAttendanceReportAction({
@@ -180,7 +176,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-12">
-      {/* টপ হেডার */}
       <header className="bg-slate-900 text-white sticky top-0 z-40 shadow-lg">
         <div className="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -214,7 +209,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* ৫টি ট্যাব নেভিগেশন (ছুটি অনুমোদনে লাল ব্যাজ সহ) */}
         <div className="max-w-6xl mx-auto px-4 flex gap-4 border-t border-slate-800 text-xs font-semibold overflow-x-auto">
           <button
             onClick={() => setActiveTab("live")}
@@ -283,7 +277,6 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      {/* কন্টেন্ট বডি */}
       <main className="max-w-6xl mx-auto px-4 mt-6 space-y-6">
         {alertMsg && (
           <div
@@ -296,14 +289,14 @@ export default function AdminDashboard() {
             <span>{alertMsg.text}</span>
             <button
               onClick={() => setAlertMsg(null)}
-              className="text-xs px-2 py-1 font-bold"
+              className="text-xs px-2 py-1 font-bold cursor-pointer"
             >
               ✕
             </button>
           </div>
         )}
 
-        {/* ট্যাব ১: লাইভ ফিড ও ফোর্স অ্যাকশন */}
+        {/* ট্যাব ১: লাইভ ফিড */}
         {activeTab === "live" && (
           <div className="space-y-6 animate-in fade-in">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -415,7 +408,11 @@ export default function AdminDashboard() {
                               ⏰ আগমন:{" "}
                               {new Date(att.checkIn).toLocaleTimeString(
                                 "en-US",
-                                { hour: "2-digit", minute: "2-digit" },
+                                {
+                                  timeZone: "Asia/Dhaka",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                },
                               )}
                             </span>
                             <span>
@@ -505,7 +502,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ট্যাব ২: হিস্ট্রি ও মাসিক রিপোর্ট (সম্পূর্ণ ফিল্টারিং, ড্রপডাউন ও ওভারটাইম সহ) */}
+        {/* ট্যাব ২: হিস্ট্রি ও মাসিক রিপোর্ট (হুবহু ৮টি কার্ড - 'মোট বিরতি' বাদ) */}
         {activeTab === "reports" && (
           <div className="space-y-6 animate-in fade-in">
             <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 space-y-4">
@@ -592,9 +589,9 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* অ্যাডমিনের ৬টি পরিসংখ্যান কার্ড */}
+            {/* অ্যাডমিনেও ঠিক একই ৮টি কার্ড (মোট বিরতি বাদ) */}
             {adminReportData?.stats && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-white p-3.5 rounded-2xl border border-slate-200 text-center shadow-sm">
                   <span className="text-[11px] text-slate-500 font-medium">
                     উপস্থিতি
@@ -604,30 +601,48 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                <div className="bg-white p-3.5 rounded-2xl border border-rose-100 bg-rose-50/40 text-center shadow-sm">
+                  <span className="text-[11px] text-rose-600 font-bold">
+                    অনুপস্থিত (Absent)
+                  </span>
+                  <div className="text-xl font-extrabold text-rose-600 mt-1">
+                    {adminReportData.stats.absentDays} দিন
+                  </div>
+                </div>
+
+                <div className="bg-white p-3.5 rounded-2xl border border-blue-100 bg-blue-50/40 text-center shadow-sm">
+                  <span className="text-[11px] text-blue-600 font-bold">
+                    অনুমোদিত ছুটি
+                  </span>
+                  <div className="text-xl font-extrabold text-blue-600 mt-1">
+                    {adminReportData.stats.leaveDays} দিন
+                  </div>
+                </div>
+
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 bg-slate-50 text-center shadow-sm">
+                  <span className="text-[11px] text-slate-600 font-bold">
+                    সাপ্তাহিক ছুটি (শুক্র)
+                  </span>
+                  <div className="text-xl font-extrabold text-slate-700 mt-1">
+                    {adminReportData.stats.weekendDays} দিন
+                  </div>
+                </div>
+
                 <div className="bg-white p-3.5 rounded-2xl border border-slate-200 text-center shadow-sm">
                   <span className="text-[11px] text-slate-500 font-medium">
                     লেট সংখ্যা
                   </span>
-                  <div className="text-xl font-extrabold text-rose-600 mt-1">
+                  <div className="text-xl font-extrabold text-amber-600 mt-1">
                     {adminReportData.stats.totalLateDays} দিন
-                  </div>
-                </div>
-
-                <div className="bg-white p-3.5 rounded-2xl border border-rose-100 bg-rose-50/40 text-center shadow-sm">
-                  <span className="text-[11px] text-rose-600 font-bold">
-                    মোট লেট সময়
-                  </span>
-                  <div className="text-xs font-extrabold text-rose-700 mt-1.5">
-                    {adminReportData.stats.totalLateTimeText}
                   </div>
                 </div>
 
                 <div className="bg-white p-3.5 rounded-2xl border border-slate-200 text-center shadow-sm">
                   <span className="text-[11px] text-slate-500 font-medium">
-                    মোট বিরতি
+                    মোট লেট সময়
                   </span>
-                  <div className="text-xl font-extrabold text-amber-600 mt-1">
-                    {adminReportData.stats.totalBreakMinutes} মি.
+                  <div className="text-xs font-extrabold text-slate-700 mt-2">
+                    {adminReportData.stats.totalLateTimeText}
                   </div>
                 </div>
 
@@ -645,90 +660,131 @@ export default function AdminDashboard() {
                     <Zap className="w-3 h-3 text-emerald-600 fill-emerald-600" />
                     মোট ওভারটাইম
                   </span>
-                  <div className="text-xs font-extrabold text-emerald-700 mt-1.5">
+                  <div className="text-xs font-extrabold text-emerald-700 mt-2">
                     {adminReportData.stats.totalOvertimeText}
                   </div>
                 </div>
               </div>
             )}
 
-            {/* বিস্তারিত রিপোর্ট তালিকা */}
+            {/* রিপোর্ট ও টাইমলাইন তালিকা */}
             <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 space-y-3">
               <h3 className="font-bold text-slate-900 text-base">
-                হাজিরা রিপোর্ট তালিকা
+                হাজিরা রিপোর্ট বিবরণ (মাসের সার্বিক অডিট)
               </h3>
 
               {loadingAdminReport ? (
                 <div className="py-12 text-center text-slate-400 text-xs">
                   ডাটা লোড হচ্ছে...
                 </div>
-              ) : adminReportData?.records.length === 0 ? (
+              ) : !adminReportData?.records ||
+                adminReportData?.records.length === 0 ? (
                 <div className="py-12 text-center text-slate-400 text-xs">
                   কোনো রেকর্ড পাওয়া যায়নি।
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {adminReportData?.records.map((r: any) => (
-                    <div key={r.id} className="py-4 space-y-1.5">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900 text-sm">
-                            {r.user.name}
-                          </span>
-                          <span className="text-xs text-slate-400">
-                            ({r.date})
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {r.overtimeMinutes > 0 && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                              +OT: {r.overtimeText}
+                  {adminReportData.records.map((item: any, idx: number) => {
+                    const isTimeline = adminReportData.isTimeline;
+                    const r = isTimeline ? item.data : item;
+                    const badgeText = isTimeline
+                      ? item.badgeText
+                      : r.isLate
+                        ? `লেট (${r.lateText})`
+                        : "যথাসময়ে";
+                    const itemType = isTimeline
+                      ? item.type
+                      : r.isLate
+                        ? "LATE"
+                        : "PRESENT";
+
+                    return (
+                      <div key={idx} className="py-4 space-y-1.5">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900 text-sm">
+                              {r?.user
+                                ? r.user.name
+                                : selectedUserFilter !== "ALL"
+                                  ? users.find(
+                                      (u: any) => u.id === selectedUserFilter,
+                                    )?.name
+                                  : "কর্মী"}
                             </span>
-                          )}
+                            <span className="text-xs text-slate-400">
+                              ({isTimeline ? item.date : r.date})
+                            </span>
+                          </div>
+
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              r.isLate
+                              itemType === "LATE"
                                 ? "bg-rose-100 text-rose-800"
-                                : "bg-emerald-100 text-emerald-800"
+                                : itemType === "PRESENT"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : itemType === "WEEKEND"
+                                    ? "bg-slate-100 text-slate-700"
+                                    : itemType === "LEAVE"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : itemType === "ABSENT"
+                                        ? "bg-rose-100 text-rose-700 font-extrabold"
+                                        : "bg-slate-50 text-slate-400"
                             }`}
                           >
-                            {r.isLate ? `লেট (${r.lateText})` : "যথাসময়ে"}
+                            {badgeText}
                           </span>
                         </div>
-                      </div>
 
-                      <div className="text-xs text-slate-500 flex flex-wrap gap-x-4">
-                        <span>
-                          ⏰ আগমন:{" "}
-                          {new Date(r.checkIn).toLocaleTimeString("en-US", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                        <span>
-                          🚪 প্রস্থান:{" "}
-                          {r.checkOut
-                            ? new Date(r.checkOut).toLocaleTimeString("en-US", {
+                        {r && (
+                          <div className="text-xs text-slate-500 flex flex-wrap gap-x-4">
+                            <span>
+                              ⏰ আগমন:{" "}
+                              {new Date(r.checkIn).toLocaleTimeString("en-US", {
+                                timeZone: "Asia/Dhaka",
                                 hour: "2-digit",
                                 minute: "2-digit",
-                              })
-                            : "এখনো নেই"}
-                        </span>
-                        <span>☕ বিরতি: {r.totalBreakMinutes} মি.</span>
-                        {r.overBreakMinutes > 0 && (
-                          <span className="text-rose-600 font-bold">
-                            (অতিরিক্ত বিরতি: {r.overBreakMinutes} মি.)
-                          </span>
+                              })}
+                            </span>
+                            <span>
+                              🚪 প্রস্থান:{" "}
+                              {r.checkOut
+                                ? new Date(r.checkOut).toLocaleTimeString(
+                                    "en-US",
+                                    {
+                                      timeZone: "Asia/Dhaka",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    },
+                                  )
+                                : "এখনো নেই"}
+                            </span>
+                            {r.overBreakMinutes > 0 && (
+                              <span className="text-rose-600 font-bold">
+                                (অতিরিক্ত বিরতি: {r.overBreakMinutes} মি.)
+                              </span>
+                            )}
+                            {r.overtimeMinutes > 0 && (
+                              <span className="text-emerald-700 font-bold">
+                                (+OT: {r.overtimeText})
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {r?.workNote && (
+                          <p className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl mt-1.5 border border-slate-100">
+                            📝 <strong>কাজের বিবরণ:</strong> {r.workNote}
+                          </p>
+                        )}
+
+                        {isTimeline && item.type === "LEAVE" && item.reason && (
+                          <p className="text-xs text-blue-700 bg-blue-50/50 p-2 rounded-xl border border-blue-100">
+                            <strong>ছুটির কারণ:</strong> {item.reason}
+                          </p>
                         )}
                       </div>
-
-                      {r.workNote && (
-                        <p className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl mt-1.5 border border-slate-100">
-                          📝 <strong>কাজের বিবরণ:</strong> {r.workNote}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -957,7 +1013,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ট্যাব ৫: অফিস সেটিংস ও জিপিএস (চেয়ারম্যান ফোন ইনপুট সহ) */}
+        {/* ট্যাব ৫: অফিস সেটিংস ও জিপিএস */}
         {activeTab === "settings" && (
           <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 sm:p-8 max-w-2xl mx-auto space-y-6 animate-in fade-in">
             <div>
@@ -1062,7 +1118,6 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* চেয়ারম্যানের WhatsApp নম্বর ইনপুট */}
               <div className="pt-2">
                 <label className="block mb-1">
                   চেয়ারম্যানের WhatsApp নম্বর

@@ -61,7 +61,6 @@ export default function AttendancePortal() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [workNote, setWorkNote] = useState<string>("");
 
-  // রিপোর্ট স্টেট
   const [reportFilter, setReportFilter] = useState<
     "current_month" | "prev_month" | "custom"
   >("current_month");
@@ -70,7 +69,6 @@ export default function AttendancePortal() {
   const [reportData, setReportData] = useState<any>(null);
   const [loadingReport, setLoadingReport] = useState<boolean>(false);
 
-  // ছুটি স্টেট
   const [leaves, setLeaves] = useState<any[]>([]);
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState<boolean>(false);
 
@@ -98,6 +96,7 @@ export default function AttendancePortal() {
       const now = new Date();
       setCurrentTime(
         now.toLocaleTimeString("en-US", {
+          timeZone: "Asia/Dhaka",
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
@@ -106,6 +105,7 @@ export default function AttendancePortal() {
       );
       setCurrentDate(
         now.toLocaleDateString("bn-BD", {
+          timeZone: "Asia/Dhaka",
           weekday: "long",
           year: "numeric",
           month: "long",
@@ -271,7 +271,6 @@ export default function AttendancePortal() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-10">
-      {/* টপ হেডার বার */}
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40">
         <div className="max-w-lg mx-auto px-4 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -290,7 +289,7 @@ export default function AttendancePortal() {
             {currentUser.role === "ADMIN" && (
               <button
                 onClick={() => router.push("/admin")}
-                className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-all"
+                className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
               >
                 <Shield className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Admin</span>
@@ -307,7 +306,6 @@ export default function AttendancePortal() {
           </div>
         </div>
 
-        {/* ৩টি ট্যাব নেভিগেশন */}
         <div className="max-w-lg mx-auto px-4 flex gap-4 text-xs font-semibold">
           <button
             onClick={() => setActiveTab("attendance")}
@@ -347,7 +345,6 @@ export default function AttendancePortal() {
         </div>
       </header>
 
-      {/* মূল কন্টেইনার */}
       <main className="max-w-lg mx-auto px-4 mt-5 space-y-4">
         {/* ট্যাব ১: আজকের হাজিরা */}
         {activeTab === "attendance" && (
@@ -525,7 +522,7 @@ export default function AttendancePortal() {
           </div>
         )}
 
-        {/* ট্যাব ২: মাসিক রিপোর্ট (৬টি বিস্তারিত স্ট্যাটাস কার্ড) */}
+        {/* ট্যাব ২: মাসিক রিপোর্ট (৮টি কার্ড - 'মোট বিরতি' ছাড়া) */}
         {activeTab === "reports" && (
           <div className="space-y-4 animate-in fade-in duration-200">
             <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-200 space-y-3">
@@ -582,7 +579,7 @@ export default function AttendancePortal() {
                   />
                   <button
                     onClick={loadReports}
-                    className="px-3 py-2 bg-emerald-600 text-white rounded-xl font-bold"
+                    className="px-3 py-2 bg-emerald-600 text-white rounded-xl font-bold cursor-pointer"
                   >
                     সার্চ
                   </button>
@@ -590,9 +587,9 @@ export default function AttendancePortal() {
               )}
             </div>
 
-            {/* ৬টি প্রধান পরিসংখ্যান কার্ড (ওভারটাইম ও মোট লেট সময় সহ) */}
+            {/* ঠিক ৮টি কার্ড (মোট বিরতি বাদ) */}
             {reportData?.stats && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-white p-3.5 rounded-2xl border border-slate-200 text-center">
                   <span className="text-[11px] text-slate-500 font-medium">
                     উপস্থিতি
@@ -602,30 +599,48 @@ export default function AttendancePortal() {
                   </div>
                 </div>
 
+                <div className="bg-white p-3.5 rounded-2xl border border-rose-100 bg-rose-50/40 text-center">
+                  <span className="text-[11px] text-rose-600 font-bold">
+                    অনুপস্থিত (Absent)
+                  </span>
+                  <div className="text-xl font-extrabold text-rose-600 mt-1">
+                    {reportData.stats.absentDays} দিন
+                  </div>
+                </div>
+
+                <div className="bg-white p-3.5 rounded-2xl border border-blue-100 bg-blue-50/40 text-center">
+                  <span className="text-[11px] text-blue-600 font-bold">
+                    অনুমোদিত ছুটি
+                  </span>
+                  <div className="text-xl font-extrabold text-blue-600 mt-1">
+                    {reportData.stats.leaveDays} দিন
+                  </div>
+                </div>
+
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 bg-slate-50 text-center">
+                  <span className="text-[11px] text-slate-600 font-bold">
+                    সাপ্তাহিক ছুটি (শুক্র)
+                  </span>
+                  <div className="text-xl font-extrabold text-slate-700 mt-1">
+                    {reportData.stats.weekendDays} দিন
+                  </div>
+                </div>
+
                 <div className="bg-white p-3.5 rounded-2xl border border-slate-200 text-center">
                   <span className="text-[11px] text-slate-500 font-medium">
                     লেট সংখ্যা
                   </span>
-                  <div className="text-xl font-extrabold text-rose-600 mt-1">
+                  <div className="text-xl font-extrabold text-amber-600 mt-1">
                     {reportData.stats.totalLateDays} দিন
-                  </div>
-                </div>
-
-                <div className="bg-white p-3.5 rounded-2xl border border-rose-100 bg-rose-50/30 text-center">
-                  <span className="text-[11px] text-rose-600 font-bold">
-                    মোট লেট সময়
-                  </span>
-                  <div className="text-sm font-extrabold text-rose-700 mt-1">
-                    {reportData.stats.totalLateTimeText}
                   </div>
                 </div>
 
                 <div className="bg-white p-3.5 rounded-2xl border border-slate-200 text-center">
                   <span className="text-[11px] text-slate-500 font-medium">
-                    মোট বিরতি
+                    মোট লেট সময়
                   </span>
-                  <div className="text-xl font-extrabold text-amber-600 mt-1">
-                    {reportData.stats.totalBreakMinutes} মি.
+                  <div className="text-xs font-extrabold text-slate-700 mt-2">
+                    {reportData.stats.totalLateTimeText}
                   </div>
                 </div>
 
@@ -641,80 +656,113 @@ export default function AttendancePortal() {
                 <div className="bg-white p-3.5 rounded-2xl border border-emerald-100 bg-emerald-50/40 text-center">
                   <span className="text-[11px] text-emerald-700 font-bold flex items-center justify-center gap-1">
                     <Zap className="w-3 h-3 text-emerald-600 fill-emerald-600" />
-                    মোট ওভারটাইম
+                    ওভারটাইম
                   </span>
-                  <div className="text-sm font-extrabold text-emerald-700 mt-1">
+                  <div className="text-xs font-extrabold text-emerald-700 mt-2">
                     {reportData.stats.totalOvertimeText}
                   </div>
                 </div>
               </div>
             )}
 
-            {/* হাজিরার বিবরণ তালিকা */}
+            {/* পূর্ণাঙ্গ ৩০ দিনের হিস্ট্রি বিবরণ তালিকা */}
             <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 space-y-3">
-              <h3 className="font-bold text-slate-900 text-sm">
-                হাজিরা হিস্ট্রি বিবরণ
+              <h3 className="font-bold text-slate-900 text-base">
+                হাজিরা হিস্ট্রি বিবরণ (দৈনিক টাইমলাইন)
               </h3>
 
               {loadingReport ? (
                 <div className="py-8 text-center text-slate-400 text-xs">
                   লোড হচ্ছে...
                 </div>
-              ) : reportData?.records.length === 0 ? (
+              ) : !reportData?.records || reportData?.records.length === 0 ? (
                 <div className="py-8 text-center text-slate-400 text-xs">
                   কোনো রেকর্ড পাওয়া যায়নি।
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {reportData?.records.map((r: any) => (
-                    <div key={r.id} className="py-3.5 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-900 text-sm">
-                          {r.date}
-                        </span>
-                        <div className="flex items-center gap-1.5">
-                          {r.overtimeMinutes > 0 && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                              +OT: {r.overtimeText}
-                            </span>
-                          )}
+                  {reportData.records.map((item: any, idx: number) => {
+                    const isAtt =
+                      item.type === "PRESENT" || item.type === "LATE";
+                    return (
+                      <div key={idx} className="py-3.5 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900 text-sm">
+                            {item.date}
+                          </span>
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              r.isLate
+                              item.type === "LATE"
                                 ? "bg-rose-100 text-rose-800"
-                                : "bg-emerald-100 text-emerald-800"
+                                : item.type === "PRESENT"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : item.type === "WEEKEND"
+                                    ? "bg-slate-100 text-slate-700"
+                                    : item.type === "LEAVE"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : item.type === "ABSENT"
+                                        ? "bg-rose-100 text-rose-700 font-extrabold"
+                                        : "bg-slate-50 text-slate-400"
                             }`}
                           >
-                            {r.isLate ? `লেট (${r.lateText})` : "যথাসময়ে"}
+                            {item.badgeText}
                           </span>
                         </div>
+
+                        {isAtt && item.data && (
+                          <>
+                            <div className="text-xs text-slate-500 flex flex-wrap gap-x-4">
+                              <span>
+                                ⏰ ইন:{" "}
+                                {new Date(item.data.checkIn).toLocaleTimeString(
+                                  "en-US",
+                                  {
+                                    timeZone: "Asia/Dhaka",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  },
+                                )}
+                              </span>
+                              <span>
+                                🚪 আউট:{" "}
+                                {item.data.checkOut
+                                  ? new Date(
+                                      item.data.checkOut,
+                                    ).toLocaleTimeString("en-US", {
+                                      timeZone: "Asia/Dhaka",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })
+                                  : "এখনো নেই"}
+                              </span>
+                              {item.data.overBreakMinutes > 0 && (
+                                <span className="text-rose-600 font-semibold">
+                                  (অতিরিক্ত বিরতি: {item.data.overBreakMinutes}{" "}
+                                  মি.)
+                                </span>
+                              )}
+                              {item.data.overtimeMinutes > 0 && (
+                                <span className="text-emerald-700 font-semibold">
+                                  (+OT: {item.data.overtimeText})
+                                </span>
+                              )}
+                            </div>
+                            {item.data.workNote && (
+                              <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-xl mt-1 border border-slate-100">
+                                📝 {item.data.workNote}
+                              </p>
+                            )}
+                          </>
+                        )}
+
+                        {item.type === "LEAVE" && item.reason && (
+                          <p className="text-xs text-blue-700 bg-blue-50/50 p-2 rounded-xl border border-blue-100">
+                            <strong>ছুটির কারণ:</strong> {item.reason}
+                          </p>
+                        )}
                       </div>
-                      <div className="text-xs text-slate-500 flex flex-wrap gap-x-4">
-                        <span>
-                          ⏰ ইন:{" "}
-                          {new Date(r.checkIn).toLocaleTimeString("en-US", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                        <span>
-                          🚪 আউট:{" "}
-                          {r.checkOut
-                            ? new Date(r.checkOut).toLocaleTimeString("en-US", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : "এখনো নেই"}
-                        </span>
-                        <span>☕ ব্রেক: {r.totalBreakMinutes} মি.</span>
-                      </div>
-                      {r.workNote && (
-                        <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-xl mt-1 border border-slate-100">
-                          📝 {r.workNote}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -916,7 +964,6 @@ export default function AttendancePortal() {
         </div>
       )}
 
-      {/* ফুটার */}
       <footer className="w-full max-w-lg mx-auto text-center text-xs text-slate-400 py-3">
         &copy; {new Date().getFullYear()} আধুনিক হাজিরা সিস্টেম | সর্বস্বত্ব
         সংরক্ষিত
